@@ -164,3 +164,37 @@ Runs 7 end-to-end checks against live public data sources.
 ## 📄 License
 
 MIT
+
+## 🪙 Proper x402 v2 client example (agents)
+
+The bare `curl` above only shows the 402 error. Here's the real payment flow using `@x402/fetch` (JS/TS SDK for agent clients):
+
+```bash
+npm install @x402/fetch @x402/core @x402/evm @x402/svm
+```
+
+```js
+import { createX402Fetch } from "@x402/fetch";
+
+const xfetch = createX402Fetch(); // wires an HTTPFacilitatorClient (Coinbase CDP)
+
+// 1. First call returns 402 with payment requirements in PAYMENT-REQUIRED header.
+// @x402/fetch handles that automatically: it reads requirements, sends a payment,
+// and retries the request — all in one line.
+const res = await xfetch(
+  "https://token-risk-api-topaz.vercel.app/v1/risk?token=" + contractAddress,
+  { method: "GET" }
+);
+
+const report = await res.json();
+console.log(report.risk); // { score, grade, reasons }
+```
+
+**Pricing:** `$0.005` USDC/call on Base mainnet (network `eip155:8453`). Facilitator: Coinbase CDP (`api.cdp.coinbase.com/platform/v2/x402`). No API key, no signup — pay per call over x402.
+
+> ⚠️ The public `x402.org/facilitator` is **testnet-only**. For mainnet use the Coinbase CDP facilitator or `facilitator.payai.network`.
+
+### Wrapper guidance (agents)
+- **MCP (Claude/Cursor):** register a remote MCP server pointing at this base URL.
+- **Vercel AI SDK / LangChain / ElizaOS:** wrap `GET /v1/risk?token=…` as a tool (returns JSON).
+- **Batch:** `POST /v1/risk/batch` with `{"tokens":["0x…","0x…"],"chain":"base"}` → 100 tokens in one call.
