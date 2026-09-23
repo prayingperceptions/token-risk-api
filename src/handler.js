@@ -4,9 +4,32 @@
 
 import { gatePayment } from './payments/x402.js';
 import { checkToken } from './sources/risk.js';
+import { rateLimit } from './payments/ratelimit.js';
 
 function json(status, body, headers = {}) {
   return { status, body, headers: { 'content-type': 'application/json; charset=utf-8', ...headers } };
+}
+
+// Audit item #1: abuse guard. In paid mode, payment IS the throttle, so the
+// limiter only applies to free/mock/test surfaces and as a coarse per-IP guard.
+// Keyed by client IP (x-forwarded-for) or a fixed key when unidentifiable.
+function clientKey(headers) {
+  const fwd = headers && (headers['x-forwarded-for'] || headers['x-real-ip']);
+  if (fwd) return 'ip:' + String(fwd).split(',')[0].trim();
+  return 'unknown';
+}
+
+function applyRateLimit(env, headers, path) {
+  // Paid mode: skip (payment throttles naturally). Free/mock/test: enforce.
+  const mode = (env.PAYMENT_MODE || env.X402_MODE || 'live');
+  if (mode === 'live') return null;
+  const max = Number(env.RATE_LIMIT_MAX || 100);
+  const windowMs = Number(env.RATE_LIMIT_WINDOW_MS || 60_000);
+  const rl = rateLimit(`${clientKey(headers)}:${path}`, { max, windowMs });
+  if (!rl.ok) {
+    return json(429, { error: 'rate_limited', retryAfterMs: rl.retryAfterMs }, { 'retry-after': String(Math.ceil(rl.retryAfterMs / 1000)) });
+  }
+  return null;
 }
 
 export async function handle(req, env) {
@@ -52,6 +75,9 @@ export async function handle(req, env) {
     const token = query && typeof query.get === 'function' ? query.get('token') : (query && query.token);
     const chain = query && typeof query.get === 'function' ? query.get('chain') : (query && query.chain);
     if (!token) return json(400, { error: 'missing required query param: token' });
+
+    const limited = applyRateLimit(env, headers, path);
+    if (limited) return limited;
 
     let gate;
     try {
