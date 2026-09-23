@@ -7,10 +7,17 @@ const USDC_BASE_DECIMALS = 6;
 const USDC_BASE_MAINNET = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 
 function cfg(env) {
+  const mode = env.PAYMENT_MODE || env.X402_MODE || 'live'; // FAIL-CLOSED: unset => live (402), never free
+  const payTo = env.X402_PAY_TO;
+  // FAIL-CLOSED (audit #4): in paid mode require an EXPLICIT X402_PAY_TO env;
+  // never silently charge to a code-default address. Refuse loudly instead.
+  if (mode === 'live' && !payTo) {
+    throw new Error('X402_PAY_TO env is required when PAYMENT_MODE=live (fail-closed: refusing to settle to a default address)');
+  }
   return {
-    mode: env.PAYMENT_MODE || env.X402_MODE || 'live', // FAIL-CLOSED: unset => live (402), never free
+    mode,
     priceUsdc: env.PRICE_USDC || env.X402_PRICE_USDC || '0.005',
-    payTo: env.X402_PAY_TO || '0x2091125bFE4259b2CfA889165Beb6290d0Df5DeA',
+    payTo: payTo || '0x2091125bFE4259b2CfA889165Beb6290d0Df5DeA', // dev-only fallback when not live
     facilitatorUrl: env.X402_FACILITATOR_URL || 'https://api.cdp.coinbase.com/platform/v2/x402',
     network: env.X402_NETWORK || 'eip155:8453', // Base mainnet
     asset: env.X402_ASSET || USDC_BASE_MAINNET,

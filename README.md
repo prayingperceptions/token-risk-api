@@ -161,6 +161,15 @@ Runs 7 end-to-end checks against live public data sources.
 
 ---
 
+## ⚖️ Liability & Terms (read before use)
+
+> **Not financial advice.** Token Risk API returns an **informational risk assessment** (score 0–100, A–F grade). It is **not a guarantee of safety, not investment or financial advice, and not a promise that any token is or will remain safe.**
+> **Use at your own risk.** No warranty of any kind is provided (express or implied). By using this service you acknowledge that assets can lose value, be rugged, or be mislabeled even at a favorable grade.
+> **No liability.** The maintainers and facilitators are not liable for losses, damages, or decisions made in reliance on a risk report. Crypto is volatile; always do independent due diligence.
+> **Informational scope.** The risk model blends market + on-chain contract signals and can be wrong or manipulated by upstream data. Treat every report as one input, not a verdict.
+>
+> This disclaimer applies to all use (free, mock, and paid). Your continued use constitutes acceptance.
+
 ## 📄 License
 
 MIT
