@@ -10,9 +10,27 @@ function json(status, body, headers = {}) {
 }
 
 export async function handle(req, env) {
-  const { method, path, query, headers, resource } = req;
+  const { method, headers } = req;
+
+  // Vercel may invoke /api/index.js directly or include function path prefixes.
+  let path = req.path;
+  if (typeof path === 'string') {
+    path = path.replace(/^\/api\/index\.js/, '').replace(/\/$/, '') || '/';
+  }
+
+  let query = req.query;
 
   if (method !== 'GET') return json(405, { error: 'method_not_allowed' });
+
+  if (path === '/debug') {
+    return json(200, {
+      debug: true,
+      rawPath: req.path,
+      normalizedPath: path,
+      query: query && (typeof query.get === 'function' ? Object.fromEntries(query) : query),
+      paymentMode: env.PAYMENT_MODE || env.X402_MODE || 'mock',
+    });
+  }
 
   if (path === '/health' || path === '/') {
     return json(200, {
@@ -32,7 +50,7 @@ export async function handle(req, env) {
 
     let gate;
     try {
-      gate = await gatePayment({ headers }, resource || (path + (token ? `?token=***}` : '')), env);
+      gate = await gatePayment({ headers }, req.resource || (path + (token ? `?token=***}` : '')), env);
     } catch (err) {
       return json(502, { error: 'payment verification failed', detail: String(err && err.message || err) });
     }
@@ -46,5 +64,5 @@ export async function handle(req, env) {
     }
   }
 
-  return json(404, { error: 'not found', endpoints: ['/health', '/v1/risk?token=***<query>&chain=<chain?>'] });
+  return json(404, { error: 'not found', rawPath: req.path, normalizedPath: path, endpoints: ['/health', '/v1/risk?token=***<query>&chain=<chain?>', '/debug'] });
 }
