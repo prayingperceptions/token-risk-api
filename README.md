@@ -118,11 +118,14 @@ Transparent scoring. Every point itemized. No black boxes.
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `PORT` | `3402` | Listen port |
-| `PAYMENT_MODE` | `mock` | `mock` (free) or `live` (x402) |
+| `PAYMENT_MODE` | `mock` | `mock` (free testing) or `live` (x402 v2) |
 | `PRICE_USDC` | `0.005` | Price per call |
-| `X402_PAY_TO` | — | Receiving address (Base USDC) |
-| `X402_NETWORK` | `base` | Payment network |
-| `X402_FACILITATOR_URL` | — | x402 facilitator for live mode |
+| `X402_PAY_TO` | `0x2091…5DeA` | Receiving address (Base mainnet USDC) |
+| `X402_NETWORK` | `eip155:8453` | Payment network (Base mainnet) |
+| `X402_ASSET` | USDC Base mainnet | Canonical USDC contract address |
+| `X402_FACILITATOR_URL` | Coinbase CDP | Mainnet facilitator (testnet `x402.org/facilitator` is NOT for mainnet) |
+
+**Live:** `https://token-risk-api-topaz.vercel.app` — x402 v2, Base mainnet, $0.005 USDC/call.
 
 ---
 
