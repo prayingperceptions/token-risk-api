@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Runtime / build
+.vercel/
+.wrangler/
+dist/
+build/
+*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Test artifacts
+coverage/
