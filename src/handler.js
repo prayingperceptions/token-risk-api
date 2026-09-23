@@ -22,13 +22,18 @@ export async function handle(req, env) {
 
   if (method !== 'GET') return json(405, { error: 'method_not_allowed' });
 
+  // FAIL-CLOSED: /debug is only enabled when ALLOW_DEBUG env is explicit; never
+  // exposed by default in production (it leaks config).
   if (path === '/debug') {
+    if (env.ALLOW_DEBUG !== 'true' && !(env.NODE_ENV === 'development')) {
+      return json(404, { error: 'not found' });
+    }
     return json(200, {
       debug: true,
       rawPath: req.path,
       normalizedPath: path,
       query: query && (typeof query.get === 'function' ? Object.fromEntries(query) : query),
-      paymentMode: env.PAYMENT_MODE || env.X402_MODE || 'mock',
+      paymentMode: env.PAYMENT_MODE || 'live',
     });
   }
 
@@ -37,9 +42,9 @@ export async function handle(req, env) {
       ok: true,
       service: 'token-risk-api',
       version: '0.1.0',
-      paymentMode: env.PAYMENT_MODE || env.X402_MODE || 'mock',
-      priceUsdc: env.PRICE_USDC || env.X402_PRICE_USDC || '0.005',
-      network: env.X402_NETWORK || 'base',
+      paymentMode: env.PAYMENT_MODE || 'live',
+      priceUsdc: env.PRICE_USDC || '0.005',
+      network: env.X402_NETWORK || 'eip155:8453',
     });
   }
 
