@@ -15,7 +15,7 @@ function request(path) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const server = spawn(process.execPath, ["server.js"], {
+const server = spawn(process.execPath, ["src/server.js"], {
   env: { ...process.env, PORT: String(PORT), X402_MODE: "mock" },
   stdio: ["ignore", "pipe", "pipe"],
 });
