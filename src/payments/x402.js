@@ -26,42 +26,54 @@ export function paymentRequirements(resourceUrl, env) {
   return {
     x402Version: 2,
     error: 'Payment required',
-    resource: {
-      url: resourceUrl,
-      name: 'Token Risk Check',
-      description: 'Pay-per-call crypto token risk intelligence over x402 on Base mainnet. Given a contract address or symbol (EVM or Solana), returns a 0-100 risk score with A-F grade, market data (liquidity, age), and contract security flags (honeypot, hidden owner, mintable, taxes, holder concentration). $0.005 USDC/call, no signup, no API key.',
-      mimeType: 'application/json',
-      // Bazaar discovery metadata — this is what makes an endpoint discoverable
-      // in the Coinbase x402 Bazaar catalog that agents search (see
-      // HeimLabs x402-express `discoverable: true` pattern). Without it, the
-      // endpoint is paid-callable but invisible to discovery.
-      discoverable: true,
-      inputSchema: {
-        type: 'object',
-        properties: {
-          token: {
-            type: 'string',
-            description: 'Contract address (0x...) or token symbol to risk-check',
+    // Official Bazaar discovery shape: `resource` is a URL STRING with
+    // top-level description/mimeType, plus an extensions.bazaar block of
+    // { info, schema }. This is what the Coinbase x402 Bazaar index parses
+    // to make an endpoint discoverable (see @x402/extensions bazaar/index.mjs
+    // extractDiscoveryInfo + extractResourceMetadataV1).
+    resource: resourceUrl,
+    description: 'Pay-per-call crypto token risk intelligence over x402 on Base mainnet. Given a contract address or symbol (EVM or Solana), returns a 0-100 risk score with A-F grade, market data (liquidity, age), and contract security flags (honeypot, hidden owner, mintable, taxes, holder concentration). $0.005 USDC/call, no signup, no API key.',
+    mimeType: 'application/json',
+    extensions: {
+      bazaar: {
+        info: {
+          input: {
+            type: 'http',
+            method: 'GET',
+            queryParams: {
+              token: {
+                type: 'string',
+                description: 'Contract address (0x...) or token symbol to risk-check',
+              },
+              chain: {
+                type: 'string',
+                enum: ['ethereum', 'bsc', 'polygon', 'arbitrum', 'base', 'optimism', 'avalanche', 'solana'],
+                description: 'Chain hint (auto-detected if omitted)',
+              },
+            },
           },
-          chain: {
-            type: 'string',
-            enum: ['ethereum', 'bsc', 'polygon', 'arbitrum', 'base', 'optimism', 'avalanche', 'solana'],
-            description: 'Chain hint (auto-detected if omitted)',
+          output: {
+            type: 'json',
+            example: {
+              token: '0x2091125bFE4259b2CfA889165Beb6290d0Df5DeA',
+              score: 42,
+              grade: 'B',
+              verdict: 'moderate risk',
+              reasons: ['holder concentration 52%', 'tax 3% on buy'],
+              market: { chain: 'base', liquidityUsd: 100000, ageDays: 30 },
+              security: { honeypot: false, hiddenOwner: false, mintable: true },
+            },
           },
         },
-        required: ['token'],
-      },
-      outputSchema: {
-        type: 'object',
-        properties: {
-          score: { type: 'number', description: '0-100 risk score' },
-          grade: { type: 'string', description: 'A-F risk grade' },
-          verdict: { type: 'string' },
-          reasons: { type: 'array', items: { type: 'string' } },
-          market: { type: 'object' },
-          security: { type: 'object' },
+        schema: {
+          $schema: 'https://json-schema.org/draft/2020-12/schema',
+          type: 'object',
+          properties: {
+            input: { type: 'object' },
+            output: { type: 'object' },
+          },
+          required: ['input'],
         },
-        required: ['score', 'grade', 'verdict'],
       },
     },
     accepts: [
