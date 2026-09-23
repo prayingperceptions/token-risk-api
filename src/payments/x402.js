@@ -1,15 +1,19 @@
-// x402 payment-gating — runtime-agnostic version.
+// x402 payment-gating — runtime-agnostic, v2 protocol.
 // Config comes from the `env` argument (Node: process.env; Worker: env bindings).
 
 const USDC_BASE_DECIMALS = 6;
+
+// Base mainnet USDC (Circle) — canonical address used in x402 examples.
+const USDC_BASE_MAINNET = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 
 function cfg(env) {
   return {
     mode: env.PAYMENT_MODE || env.X402_MODE || 'mock',
     priceUsdc: env.PRICE_USDC || env.X402_PRICE_USDC || '0.005',
     payTo: env.X402_PAY_TO || '0x2091125bFE4259b2CfA889165Beb6290d0Df5DeA',
-    facilitatorUrl: env.X402_FACILITATOR_URL || '',
-    network: env.X402_NETWORK || 'base',
+    facilitatorUrl: env.X402_FACILITATOR_URL || 'https://api.cdp.coinbase.com/platform/v2/x402',
+    network: env.X402_NETWORK || 'eip155:8453', // Base mainnet
+    asset: env.X402_ASSET || USDC_BASE_MAINNET,
   };
 }
 
@@ -20,28 +24,35 @@ function priceInAtomicUnits(priceUsdc) {
 export function paymentRequirements(resourceUrl, env) {
   const c = cfg(env);
   return {
-    x402Version: 1,
+    x402Version: 2,
+    error: 'Payment required',
+    resource: {
+      url: resourceUrl,
+      description: 'Token risk check',
+      mimeType: 'application/json',
+    },
     accepts: [
       {
         scheme: 'exact',
         network: c.network,
-        maxAmountRequired: priceInAtomicUnits(c.priceUsdc),
-        resource: resourceUrl,
-        description: 'Token risk check',
-        mimeType: 'application/json',
+        amount: priceInAtomicUnits(c.priceUsdc),
+        asset: c.asset,
         payTo: c.payTo,
-        asset: 'USDC',
-        maxTimeoutSeconds: 60,
+        maxTimeoutSeconds: 300,
+        extra: {
+          name: 'USDC',
+          version: '2',
+          resourceUrl,
+        },
       },
     ],
-    error: 'Payment required',
   };
 }
 
 async function verifyWithFacilitator(paymentHeader, resourceUrl, env) {
   const c = cfg(env);
-  const requirements = paymentRequirements(resourceUrl, env).accepts[0];
-  const body = JSON.stringify({ x402Version: 1, paymentHeader, paymentRequirements: requirements });
+  const requirements = paymentRequirements(resourceUrl, env);
+  const body = JSON.stringify({ x402Version: 2, paymentHeader, paymentRequirements: requirements });
 
   const res = await fetch(`${c.facilitatorUrl}/verify`, {
     method: 'POST',
@@ -73,7 +84,10 @@ export async function gatePayment(req, resourceUrl, env) {
     return {
       paid: false,
       status: 402,
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'PAYMENT-REQUIRED': Buffer.from(JSON.stringify(paymentRequirements(resourceUrl, env))).toString('base64'),
+      },
       body: JSON.stringify(paymentRequirements(resourceUrl, env)),
     };
   }
