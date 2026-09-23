@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "description": "x402 pay-per-call crypto token risk-check API (Daily Bread revenue engine)",
   "type": "module",
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node server.js",
+    "dev": "node src/server.js",
     "test": "node test.js"
   },
   "engines": {
