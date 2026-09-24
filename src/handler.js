@@ -7,7 +7,7 @@ import { checkToken } from './sources/risk.js';
 import { rateLimit } from './payments/ratelimit.js';
 
 function json(status, body, headers = {}) {
-  return { status, body, headers: { 'content-type': 'application/json; charset=utf-8', ...headers } };
+  return { status, body, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', ...headers } };
 }
 
 // Audit item #1: abuse guard. In paid mode, payment IS the throttle, so the
