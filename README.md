@@ -1,10 +1,14 @@
 # Token Risk API 🛡️
 
+**Part of [Agent Stack](https://agentos-landing.vercel.app) — the open-source rails of the agent economy.**
+
 **Pay-per-call crypto token risk intelligence.**
 
 > **Know what you're buying before you buy it.**
 
 **Address in. Risk report out. $0.005 USDC.**
+
+> 🔗 **Agent Stack** (open source, MIT): [agent-inbox](https://github.com/prayingperceptions/agent-inbox) · [token-risk-api](https://github.com/prayingperceptions/token-risk-api) · [agent-authority](https://github.com/prayingperceptions/agent-authority) · [agent-recovery](https://github.com/prayingperceptions/agent-recovery)
 
 Token Risk API is a zero-dependency Node.js service that aggregates live market data and contract security signals into a transparent, actionable risk score — sold over x402 at a fraction of a cent per call.
 
