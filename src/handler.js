@@ -2,7 +2,7 @@
 // Used by src/server.js (Node) and worker.js (Cloudflare/Vercel Edge).
 // All config comes from the `env` argument — no process.env reads here.
 
-import { gatePayment } from './payments/x402.js';
+import { gatePayment, verifyTxPayment } from './payments/x402.js';
 import { checkToken } from './sources/risk.js';
 import { rateLimit } from './payments/ratelimit.js';
 
@@ -94,6 +94,22 @@ export async function handle(req, env) {
 
     const limited = applyRateLimit(env, headers, path);
     if (limited) return limited;
+
+    // Direct on-chain payment: ?txHash=0x... verified against Base RPC.
+    // No facilitator, no signature — the Transfer event is the receipt.
+    const txHash = query && typeof query.get === 'function' ? query.get('txHash') : (query && query.txHash);
+    if (txHash) {
+      const v = await verifyTxPayment(txHash, env);
+      if (!v.ok) {
+        return json(402, { error: 'payment not verified', reason: v.reason });
+      }
+      try {
+        const report = await checkToken(token, chain, fetch);
+        return json(200, { ...report, payment: { txHash: v.txHash } });
+      } catch (err) {
+        return json(500, { error: 'risk check failed', detail: String(err && err.message || err) });
+      }
+    }
 
     let gate;
     try {
