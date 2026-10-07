@@ -43,6 +43,22 @@ export async function handle(req, env) {
 
   let query = req.query;
 
+  // CORS preflight: browser clients send OPTIONS before the paid retry
+  // (custom X-PAYMENT header). Answer it or the preflight fails and the
+  // browser reports a bare 'Failed to fetch'.
+  if (method === 'OPTIONS') {
+    return {
+      status: 204,
+      body: {},
+      headers: {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'GET, OPTIONS',
+        'access-control-allow-headers': 'X-PAYMENT, Content-Type',
+        'access-control-max-age': '86400',
+      },
+    };
+  }
+
   if (method !== 'GET') return json(405, { error: 'method_not_allowed' });
 
   // FAIL-CLOSED: /debug is only enabled when ALLOW_DEBUG env is explicit; never
