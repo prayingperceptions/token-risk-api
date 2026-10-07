@@ -154,3 +154,65 @@ export async function gatePayment(req, resourceUrl, env) {
   }
   return { paid: true, txHash: verdict.txHash };
 }
+// -- Direct on-chain payment verification (no facilitator) -----------------
+// The client sends USDC directly to payTo, then passes ?txHash=. We verify
+// the receipt on Base public RPC: confirmed + Transfer event of exactly the
+// price to payTo on the USDC contract. No secrets, no hot wallet, no deps.
+
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const BASE_RPC_URLS = [
+  'https://mainnet.base.org',
+  'https://base.publicnode.com',
+  'https://1rpc.io/base',
+];
+
+// In-memory spent set. Note: serverless instances don't share memory, so a
+// txHash could theoretically be reused across cold starts. Low volume makes
+// this acceptable for now; a persistent store is the follow-up.
+const spentTxHashes = new Set();
+
+async function rpcFirst(urls, method, params) {
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      });
+      if (!res.ok) continue;
+      const j = await res.json();
+      if (j.result !== undefined) return j.result;
+    } catch { /* try next RPC */ }
+  }
+  return null;
+}
+
+export async function verifyTxPayment(txHash, env) {
+  const c = cfg(env);
+  const hash = String(txHash || '').toLowerCase();
+  if (!/^0x[0-9a-f]{64}$/.test(hash)) return { ok: false, reason: 'malformed tx hash' };
+  if (spentTxHashes.has(hash)) return { ok: false, reason: 'payment already redeemed' };
+
+  const receipt = await rpcFirst(BASE_RPC_URLS, 'eth_getTransactionReceipt', [hash]);
+  if (!receipt) return { ok: false, reason: 'tx not found (or RPC unreachable)' };
+  if (receipt.status !== '0x1') return { ok: false, reason: 'tx not successful' };
+
+  const payTo = c.payTo.toLowerCase();
+  const wantValue = priceInAtomicUnits(c.priceUsdc);
+  const asset = c.asset.toLowerCase();
+
+  for (const log of receipt.logs || []) {
+    if (!log.address || log.address.toLowerCase() !== asset) continue;
+    const topics = log.topics || [];
+    if (!topics[0] || topics[0].toLowerCase() !== TRANSFER_TOPIC) continue;
+    if (topics.length < 3) continue;
+    const to = ('0x' + topics[2].slice(-40)).toLowerCase();
+    let value;
+    try { value = BigInt(log.data).toString(); } catch { continue; }
+    if (to === payTo && value === wantValue) {
+      spentTxHashes.add(hash);
+      return { ok: true, txHash: hash };
+    }
+  }
+  return { ok: false, reason: 'no matching USDC payment in tx logs' };
+}
