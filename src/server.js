@@ -7,7 +7,10 @@ const port = Number(process.env.PORT || 8787);
 
 const server = http.createServer(async (req, res) => {
   try {
-    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const _host = req.headers.host || 'localhost';
+    const _fwdProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+    const _proto = _fwdProto || (_host.startsWith('localhost') || _host.startsWith('127.') ? 'http' : 'https');
+    const url = new URL(req.url, `${_proto}://${_host}`);
     const headers = {};
     for (const [k, v] of Object.entries(req.headers)) headers[k.toLowerCase()] = String(v);
     const result = await handle(
