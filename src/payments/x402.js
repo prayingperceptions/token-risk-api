@@ -33,12 +33,16 @@ export function paymentRequirements(resourceUrl, env) {
   return {
     x402Version: 2,
     error: 'Payment required',
-    // Official Bazaar discovery shape: `resource` is a URL STRING with
-    // top-level description/mimeType, plus an extensions.bazaar block of
-    // { info, schema }. This is what the Coinbase x402 Bazaar index parses
-    // to make an endpoint discoverable (see @x402/extensions bazaar/index.mjs
-    // extractDiscoveryInfo + extractResourceMetadataV1).
-    resource: resourceUrl,
+    // x402 v2 spec + CDP Bazaar validator: `resource` MUST be an object with a
+    // `url` field. A bare string fails validation outright ("cannot unmarshal
+    // string into Go struct field PaymentRequired.resource"). description and
+    // mimeType live inside the resource object; top-level copies are kept for
+    // older clients that read them there.
+    resource: {
+      url: resourceUrl,
+      description: 'Pay-per-call crypto token risk intelligence over x402 on Base mainnet. Given a contract address or symbol (EVM or Solana), returns a 0-100 risk score with A-F grade, market data (liquidity, age), and contract security flags (honeypot, hidden owner, mintable, taxes, holder concentration). $0.005 USDC/call, no signup, no API key.',
+      mimeType: 'application/json',
+    },
     description: 'Pay-per-call crypto token risk intelligence over x402 on Base mainnet. Given a contract address or symbol (EVM or Solana), returns a 0-100 risk score with A-F grade, market data (liquidity, age), and contract security flags (honeypot, hidden owner, mintable, taxes, holder concentration). $0.005 USDC/call, no signup, no API key.',
     mimeType: 'application/json',
     extensions: {
