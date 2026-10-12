@@ -12,9 +12,11 @@ export default {
       { method: request.method, path: url.pathname, query: url.searchParams, headers, resource: url.toString() },
       env || {},
     );
-    return new Response(JSON.stringify(result.body, null, 2), {
+    const resHeaders = { 'content-type': 'application/json; charset=utf-8', ...(result.headers || {}) };
+    const isHtml = typeof result.body === 'string' && /text\/html/.test(resHeaders['content-type'] || '');
+    return new Response(isHtml ? result.body : JSON.stringify(result.body, null, 2), {
       status: result.status,
-      headers: { 'content-type': 'application/json; charset=utf-8', ...(result.headers || {}) },
+      headers: resHeaders,
     });
   },
 };
