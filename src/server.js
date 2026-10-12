@@ -14,8 +14,10 @@ const server = http.createServer(async (req, res) => {
       { method: req.method, path: url.pathname, query: url.searchParams, headers, resource: url.toString() },
       process.env,
     );
-    res.writeHead(result.status, { 'content-type': 'application/json; charset=utf-8', ...result.headers });
-    res.end(JSON.stringify(result.body, null, 2));
+    const resHeaders = { 'content-type': 'application/json; charset=utf-8', ...result.headers };
+    res.writeHead(result.status, resHeaders);
+    const isHtml = typeof result.body === 'string' && /text\/html/.test(resHeaders['content-type'] || '');
+    res.end(isHtml ? result.body : JSON.stringify(result.body, null, 2));
   } catch (err) {
     res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ error: 'internal_error', detail: String(err && err.message || err) }));
