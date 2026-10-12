@@ -221,6 +221,56 @@ function landingPage() {
   };
 }
 
+function openapiDocument(baseUrl) {
+  return {
+    openapi: '3.1.0',
+    info: {
+      title: 'Token Risk API',
+      version: '0.1.0',
+      description: 'Pay-per-call crypto token risk intelligence over x402 on Base mainnet. Given a contract address or symbol, returns a 0-100 risk score with A-F grade, market data (liquidity, age), and contract security flags (honeypot, hidden owner, mintable, taxes, holder concentration). $0.005 USDC per call, no signup, no API key. Not financial advice.',
+    },
+    servers: [{ url: baseUrl }],
+    paths: {
+      '/v1/risk': {
+        get: {
+          summary: 'Token risk report',
+          description: 'Returns a risk report for a token. Unpaid requests answer 402 with an x402 payment challenge; pay 0.005 USDC on Base and retry with the tx hash.',
+          operationId: 'getRiskReport',
+          parameters: [
+            { name: 'token', in: 'query', required: true, schema: { type: 'string' }, description: 'Contract address (0x...) or token symbol to risk-check' },
+            { name: 'chain', in: 'query', required: false, schema: { type: 'string', enum: ['ethereum', 'bsc', 'polygon', 'arbitrum', 'base', 'optimism', 'avalanche', 'solana'] }, description: 'Chain hint (auto-detected if omitted)' },
+            { name: 'txHash', in: 'query', required: false, schema: { type: 'string' }, description: 'USDC payment transaction hash on Base (0x...)' },
+          ],
+          responses: {
+            '200': {
+              description: 'Risk report',
+              content: { 'application/json': { schema: {
+                type: 'object',
+                properties: {
+                  token: { type: 'object', properties: { address: { type: 'string' }, name: { type: 'string' }, symbol: { type: 'string' } } },
+                  risk: { type: 'object', properties: { score: { type: 'number' }, grade: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } } },
+                  market: { type: 'object' },
+                  contractSecurity: { type: 'object' },
+                },
+              } } },
+            },
+            '402': { description: 'Payment required — x402 v2 challenge with accepts[] and extensions.bazaar discovery metadata' },
+            '400': { description: 'Missing required query param' },
+          },
+          'x-payment-info': {
+            type: 'fixed',
+            amount: '0.005',
+            currency: 'USD',
+            asset: 'USDC',
+            network: 'eip155:8453',
+            protocols: [{ x402: {} }],
+          },
+        },
+      },
+    },
+  };
+}
+
 export async function handle(req, env) {
   const { method, headers } = req;
 
@@ -263,6 +313,13 @@ export async function handle(req, env) {
       query: query && (typeof query.get === 'function' ? Object.fromEntries(query) : query),
       paymentMode: env.PAYMENT_MODE || 'live',
     });
+  }
+
+  if (path === '/openapi.json') {
+    const _h = (headers && headers['host']) || 'localhost';
+    const _fp = String((headers && headers['x-forwarded-proto']) || '').split(',')[0].trim();
+    const _pr = _fp || (_h.startsWith('localhost') || _h.startsWith('127.') ? 'http' : 'https');
+    return json(200, openapiDocument(`${_pr}://${_h}`));
   }
 
   if (path === '/health') {
